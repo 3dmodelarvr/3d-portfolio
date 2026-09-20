@@ -32,9 +32,8 @@
       display: flex;
       flex-direction: column;
       height: 100vh;
-      overflow: hidden; /* Убираем любые скроллбары */
+      overflow: hidden;
       transition: background-color 0.4s ease;
-      /* ЗАЩИТА: Запрещаем выделение текста */
       user-select: none; 
       -webkit-user-select: none;
     }
@@ -45,7 +44,7 @@
       justify-content: space-between;
       align-items: center;
       padding: 20px 40px;
-      z-index: 20; /* Чтобы шапка всегда была поверх */
+      z-index: 20;
     }
     .logo { font-weight: bold; font-size: 20px; letter-spacing: 1px; }
     .logo span { color: #009688; font-weight: normal; font-size: 16px; margin-left: 10px; }
@@ -62,7 +61,7 @@
     }
     #themeToggle:hover { opacity: 0.7; }
 
-    /* Основной контейнер растянут на всю страницу */
+    /* Основной контейнер */
     main {
       position: relative;
       flex: 1;
@@ -90,6 +89,7 @@
       font-size: 20px;
       cursor: pointer;
       backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
       transition: 0.2s;
       display: flex;
       align-items: center;
@@ -101,7 +101,7 @@
     .nav-btn.prev { left: 40px; }
     .nav-btn.next { right: 40px; }
 
-    /* Стеклянная информационная панель */
+    /* Стеклянная информационная панель (Desktop по умолчанию) */
     .info-panel {
       position: absolute;
       bottom: 40px;
@@ -116,10 +116,34 @@
       min-width: 220px;
       box-shadow: 0 10px 30px rgba(0,0,0,0.1);
       pointer-events: none;
+      transition: all 0.3s ease;
     }
     .info-panel h3 { margin: 0 0 12px 0; font-size: 18px; color: #009688; }
     .info-panel p { margin: 6px 0; font-size: 14px; font-weight: bold; }
     .info-panel span { font-weight: normal; opacity: 0.9; }
+
+    /* Кнопка открытия инфо (скрыта на ПК) */
+    .info-toggle-btn {
+      display: none;
+      position: absolute;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 15;
+      padding: 10px 24px;
+      border-radius: 25px;
+      background: var(--panel-bg);
+      color: var(--text-color);
+      border: 1px solid var(--panel-border);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      font-weight: bold;
+      font-size: 14px;
+      cursor: pointer;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      align-items: center;
+      gap: 8px;
+    }
 
     /* Анимированный лоадер */
     .loader-container {
@@ -140,6 +164,43 @@
     }
     @keyframes spin { 100% { transform: rotate(360deg); } }
 
+    /* =========================================
+       АДАПТАЦИЯ ДЛЯ МОБИЛЬНЫХ УСТРОЙСТВ (ТЕЛЕФОНЫ)
+       ========================================= */
+    @media (max-width: 768px) {
+      header {
+        padding: 15px 20px;
+        flex-direction: column;
+        gap: 15px;
+        text-align: center;
+      }
+      .logo { font-size: 18px; }
+      .logo span { display: block; margin: 5px 0 0 0; font-size: 14px; }
+      
+      .nav-btn { width: 40px; height: 40px; font-size: 16px; }
+      .nav-btn.prev { left: 15px; }
+      .nav-btn.next { right: 15px; }
+
+      /* Показываем кнопку Info */
+      .info-toggle-btn { display: flex; }
+
+      /* Прячем панель по умолчанию и меняем её позицию */
+      .info-panel {
+        left: 50%;
+        bottom: 85px;
+        transform: translateX(-50%) translateY(20px);
+        width: calc(100% - 80px); /* Отступы по бокам */
+        opacity: 0;
+        pointer-events: none;
+      }
+      
+      /* Класс для показа панели на телефоне */
+      .info-panel.show {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+      }
+    }
+
   </style>
 </head>
 
@@ -151,25 +212,28 @@
   </header>
 
   <main>
-    <!-- Кнопка Влево -->
     <button class="nav-btn prev" onclick="prevModel()">❮</button>
     
-    <!-- model-viewer растянут на весь main -->
     <model-viewer id="myViewer" shadow-intensity="1.2" shadow-softness="1" camera-controls auto-rotate ar>
       <div slot="poster" class="loader-container">
          <div class="spinner"></div>
       </div>
     </model-viewer>
     
+    <!-- Кнопка Инфо для телефонов -->
+    <button class="info-toggle-btn" id="infoToggleBtn">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+      Info
+    </button>
+
     <!-- Информационная панель -->
-    <div class="info-panel">
+    <div class="info-panel" id="infoPanel">
       <h3 id="infoName">Loading...</h3>
       <p>Size: <span id="infoSize">--</span></p>
       <p>Polygons: <span id="infoPoly">--</span></p>
       <p>Textures: <span id="infoTex">--</span></p>
     </div>
 
-    <!-- Кнопка Вправо -->
     <button class="nav-btn next" onclick="nextModel()">❯</button>
   </main>
 
@@ -224,11 +288,27 @@
       loadModel(currentIndex);
     }
 
+    // Логика темной темы
     const themeToggle = document.getElementById('themeToggle');
     themeToggle.addEventListener('click', () => {
       const isDark = document.body.getAttribute('data-theme') === 'dark';
       document.body.setAttribute('data-theme', isDark ? 'light' : 'dark');
       themeToggle.innerText = isDark ? '🌙 Dark Mode' : '☀️ Light Mode';
+    });
+
+    // Логика кнопки Инфо (для мобилок)
+    const infoToggleBtn = document.getElementById('infoToggleBtn');
+    const infoPanel = document.getElementById('infoPanel');
+    
+    infoToggleBtn.addEventListener('click', () => {
+      infoPanel.classList.toggle('show');
+    });
+
+    // Скрываем панель на телефоне, если пользователь трогает саму модель
+    viewer.addEventListener('pointerdown', () => {
+       if (window.innerWidth <= 768) {
+           infoPanel.classList.remove('show');
+       }
     });
 
     loadModel(currentIndex);
