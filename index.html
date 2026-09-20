@@ -34,6 +34,7 @@
       height: 100vh;
       overflow: hidden;
       transition: background-color 0.4s ease;
+      /* Базовая защита от выделения */
       user-select: none; 
       -webkit-user-select: none;
     }
@@ -101,7 +102,7 @@
     .nav-btn.prev { left: 40px; }
     .nav-btn.next { right: 40px; }
 
-    /* Стеклянная информационная панель (Desktop по умолчанию) */
+    /* Стеклянная информационная панель */
     .info-panel {
       position: absolute;
       bottom: 40px;
@@ -164,9 +165,7 @@
     }
     @keyframes spin { 100% { transform: rotate(360deg); } }
 
-    /* =========================================
-       АДАПТАЦИЯ ДЛЯ МОБИЛЬНЫХ УСТРОЙСТВ (ТЕЛЕФОНЫ)
-       ========================================= */
+    /* АДАПТАЦИЯ ДЛЯ ТЕЛЕФОНОВ */
     @media (max-width: 768px) {
       header {
         padding: 15px 20px;
@@ -181,20 +180,17 @@
       .nav-btn.prev { left: 15px; }
       .nav-btn.next { right: 15px; }
 
-      /* Показываем кнопку Info */
       .info-toggle-btn { display: flex; }
 
-      /* Прячем панель по умолчанию и меняем её позицию */
       .info-panel {
         left: 50%;
         bottom: 85px;
         transform: translateX(-50%) translateY(20px);
-        width: calc(100% - 80px); /* Отступы по бокам */
+        width: calc(100% - 80px);
         opacity: 0;
         pointer-events: none;
       }
       
-      /* Класс для показа панели на телефоне */
       .info-panel.show {
         opacity: 1;
         transform: translateX(-50%) translateY(0);
@@ -220,13 +216,11 @@
       </div>
     </model-viewer>
     
-    <!-- Кнопка Инфо для телефонов -->
     <button class="info-toggle-btn" id="infoToggleBtn">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
       Info
     </button>
 
-    <!-- Информационная панель -->
     <div class="info-panel" id="infoPanel">
       <h3 id="infoName">Loading...</h3>
       <p>Size: <span id="infoSize">--</span></p>
@@ -250,32 +244,19 @@
 
     let currentIndex = 0;
     const viewer = document.getElementById('myViewer');
-    let currentObjectURL = null;
 
-    async function loadModel(index) {
+    function loadModel(index) {
       const data = models[index];
       
+      // Обновляем текст в панели
       document.getElementById('infoName').innerText = data.name;
       document.getElementById('infoSize').innerText = data.size;
       document.getElementById('infoPoly').innerText = data.poly;
       document.getElementById('infoTex').innerText = data.tex;
 
-      try {
-        viewer.removeAttribute('src'); 
-        
-        const response = await fetch(data.file);
-        const blob = await response.blob();
-        
-        if (currentObjectURL) {
-          URL.revokeObjectURL(currentObjectURL);
-        }
-        
-        currentObjectURL = URL.createObjectURL(blob);
-        viewer.setAttribute('src', currentObjectURL);
-
-      } catch (error) {
-        console.error("Error loading model:", error);
-      }
+      // ПРЯМАЯ И ОПТИМИЗИРОВАННАЯ ЗАГРУЗКА
+      // model-viewer сам очистит память от предыдущей модели
+      viewer.src = data.file;
     }
 
     function nextModel() {
@@ -288,7 +269,6 @@
       loadModel(currentIndex);
     }
 
-    // Логика темной темы
     const themeToggle = document.getElementById('themeToggle');
     themeToggle.addEventListener('click', () => {
       const isDark = document.body.getAttribute('data-theme') === 'dark';
@@ -296,7 +276,6 @@
       themeToggle.innerText = isDark ? '🌙 Dark Mode' : '☀️ Light Mode';
     });
 
-    // Логика кнопки Инфо (для мобилок)
     const infoToggleBtn = document.getElementById('infoToggleBtn');
     const infoPanel = document.getElementById('infoPanel');
     
@@ -304,7 +283,6 @@
       infoPanel.classList.toggle('show');
     });
 
-    // Скрываем панель на телефоне, если пользователь трогает саму модель
     viewer.addEventListener('pointerdown', () => {
        if (window.innerWidth <= 768) {
            infoPanel.classList.remove('show');
